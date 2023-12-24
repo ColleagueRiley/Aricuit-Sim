@@ -4,8 +4,8 @@
 - projects as modules
 - module input
 - scroll
+- constants (0 and 1)
 
-- button
 - clock
 - ROM
 - RAM

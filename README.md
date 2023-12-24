@@ -4,7 +4,7 @@ A basic digital logic simulator (inspired by Digital Logic Sim) named after Aris
 # component.h
 component.h is a custom made library made specifically for this program.\
 This allows people to easily create their own version of this program or their own additions, simply by editing the header file.\
-It also allows a user to easily change how components are rendered and what backend the library uses for rendering\
+It also allows a user to easily change how components are rendered and what backend the library uses for rendering
 
 # Features
 - drag components around
@@ -20,7 +20,13 @@ It also allows a user to easily change how components are rendered and what back
 - basic input
 
 # Features todo
-- button
+- save as file
+- load file
+- menu screen
+- projects as modules
+- module input
+- scroll
+- constants (0 and 1)
 - clock
 - ROM
 - RAM
