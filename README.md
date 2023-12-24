@@ -19,6 +19,7 @@ It also allows a user to easily change how components are rendered and what back
 - LED output
 - basic input
 - basic button
+- constants (0 and 1)
 
 # Features todo
 - save as file
@@ -27,7 +28,6 @@ It also allows a user to easily change how components are rendered and what back
 - projects as modules
 - module input
 - scroll
-- constants (0 and 1)
 - clock
 - ROM
 - RAM

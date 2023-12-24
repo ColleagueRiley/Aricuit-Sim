@@ -43,7 +43,9 @@ typedef enum componentType {
     NOT,
     AND,
     OR,
-    BUTTON
+    BUTTON,
+    CONST_ONE,
+    CONST_ZERO,
 } componentType;
 
 typedef struct component component;
@@ -106,6 +108,9 @@ COMPDEF component* add_component(component c) {
 
     comp_components[comp_components_len] = c;
     comp_components_len++;
+
+    if (c.type == CONST_ONE)
+        c.active = true;
 
     return &comp_components[comp_components_len - 1];
 }
@@ -256,6 +261,19 @@ COMPDEF void comp_pressed(size_t x, size_t y, uint8_t moving) {
         compMoving = true;
         return;
     }
+
+    if (comp_collide(830, (compH - 40), 45, 45, x, y)) {
+        compPressed = add_component(COMPONENT(x, y, CONST_ZERO));
+        compMoving = true;
+        return;
+    }
+
+    if (comp_collide(755, (compH - 40), 45, 45, x, y)) {
+        compPressed = add_component(COMPONENT(x, y, CONST_ONE));
+        compPressed->active = true;
+        compMoving = true;
+        return;
+    }
 }
 
 COMPDEF void comp_move(size_t x, size_t y) {
@@ -299,7 +317,7 @@ COMPDEF void comp_click(size_t x, size_t y) {
         break;
     }
     
-    if (compClicked == compPressed)
+    if (compClicked == compPressed && (compPressed->type != CONST_ZERO && compPressed->type != CONST_ONE))
         compPressed->active = !compPressed->active;
     else if (compClicked != NULL) 
         component_addChild(compPressed, compClicked);
@@ -341,6 +359,15 @@ COMPDEF void comp_draw(size_t w, size_t h) {
             case BUTTON:
                 RSGL_drawCircle(RSGL_CIRCLE(comp.x, comp.y, 45), RSGL_RGB(comp.active ? 120 : 100, comp.active ? 120 : 100, comp.active ? 120 : 100));
                 RSGL_drawCircle(RSGL_CIRCLE(comp.x + 3, comp.y + 3, 39), RSGL_RGB(comp.active ? 200 : 145, comp.active ? 200 : 145, comp.active ? 200 : 145));
+                break;
+            case CONST_ONE:
+                RSGL_drawCircle(RSGL_CIRCLE(comp.x, comp.y, 45), RSGL_RGB(235, 235, 235));
+                RSGL_drawCircle(RSGL_CIRCLE(comp.x + 3, comp.y + 3, 39), RSGL_RGB(255, 255, 255));
+                break;
+            case CONST_ZERO:
+                RSGL_drawCircle(RSGL_CIRCLE(comp.x, comp.y, 45), RSGL_RGB(0, 0, 0));
+                RSGL_drawCircle(RSGL_CIRCLE(comp.x + 3, comp.y + 3, 39), RSGL_RGB(35, 35, 35));
+                break;           
             default: 
                 break;
         }
@@ -348,8 +375,10 @@ COMPDEF void comp_draw(size_t w, size_t h) {
         for (i = 0; i < comp.children_len; i++) {
             component* child = comp.children[i];
 
-            if (child->type == NOT)
-                 child->active = !comp.active; 
+            if (child->type == CONST_ZERO) child->active = false;
+            else if (child->type == CONST_ONE) child->active = true;
+            else if (child->type == NOT)
+                child->active = !comp.active; 
             else if (child->type == AND) {
                 bool active = comp.active;
 
@@ -416,6 +445,14 @@ COMPDEF void comp_draw(size_t w, size_t h) {
     RSGL_drawCircle(RSGL_CIRCLE(625, (h - 40), 45), RSGL_RGB(100, 100, 100));
     RSGL_drawCircle(RSGL_CIRCLE(625 + 3, (h - 40) + 3, 39), RSGL_RGB(145, 145, 145));
     RSGL_drawText("B U T T O N", RSGL_CIRCLE(580, h - 40, 25), RSGL_RGB(120, 120, 120));
+
+    RSGL_drawCircle(RSGL_CIRCLE(755, (h - 40), 45), RSGL_RGB(235, 235, 235));
+    RSGL_drawCircle(RSGL_CIRCLE(755 + 3, (h - 40) + 3, 39), RSGL_RGB(255, 255, 255));
+    RSGL_drawText("1", RSGL_CIRCLE(770, h - 40, 25), RSGL_RGB(120, 120, 120));
+
+    RSGL_drawCircle(RSGL_CIRCLE(830, (h - 40), 45), RSGL_RGB(0, 0, 0));
+    RSGL_drawCircle(RSGL_CIRCLE(830 + 3, (h - 40) + 3, 39), RSGL_RGB(35, 35, 35));
+    RSGL_drawText("0", RSGL_CIRCLE(840, h - 40, 25), RSGL_RGB(120, 120, 120));
 }
 #endif
 #endif
