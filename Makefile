@@ -20,7 +20,7 @@ ifeq ($(detected_OS),Linux)
     LIBS := -I./include -lX11 -lGL -lm 
 endif
 
-OUTPUT = aircuit
+OUTPUT = Aricuit
 
 all:
 	make RSGL.o
