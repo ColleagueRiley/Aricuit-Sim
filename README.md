@@ -1,5 +1,5 @@
 # Aircuit
-A basic digital logic simulator (inspired by Digital Logic Sim) named after Airistotle, the father of logic.
+A basic digital logic simulator (inspired by Digital Logic Sim) named after Aristotle, the father of logic.
 
 # component.h
 component.h is a custom made library made specifically for this program.\
