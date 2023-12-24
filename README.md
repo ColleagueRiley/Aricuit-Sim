@@ -18,6 +18,7 @@ It also allows a user to easily change how components are rendered and what back
 - OR gate
 - LED output
 - basic input
+- basic button
 
 # Features todo
 - save as file
