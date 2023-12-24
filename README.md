@@ -21,6 +21,7 @@ It also allows a user to easily change how components are rendered and what back
 - basic button
 - constants (0 and 1)
 - buzzer
+- clock (that can count up to 8-bits)
 
 # Features todo
 - save as file

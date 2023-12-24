@@ -36,6 +36,7 @@
 #define COMPONENT_H
 
 #include <stdint.h>
+#include <math.h>
 
 typedef enum componentType {
     INPUT,
@@ -47,6 +48,7 @@ typedef enum componentType {
     CONST_ONE,
     CONST_ZERO,
     BUZZER,
+    CLOCK,
 } componentType;
 
 typedef struct component component;
@@ -64,6 +66,8 @@ struct component {
     size_t children_len;
     size_t children_cap;
     component** children;
+
+    time_t startTime;
 };
 
 #define COMPONENT(x, y, type) (component){x, y, type}
@@ -112,6 +116,8 @@ COMPDEF component* add_component(component c) {
 
     if (c.type == CONST_ONE)
         c.active = true;
+
+    c.startTime = 0;
 
     return &comp_components[comp_components_len - 1];
 }
@@ -282,6 +288,12 @@ COMPDEF void comp_pressed(size_t x, size_t y, uint8_t moving) {
         compMoving = true;
         return;
     }
+
+    if (comp_collide(850, (compH - 40), 45, 45, x, y)) {
+        compPressed = add_component(COMPONENT(x, y, CLOCK));
+        compMoving = true;
+        return;
+    }
 }
 
 COMPDEF void comp_move(size_t x, size_t y) {
@@ -386,15 +398,38 @@ COMPDEF void comp_draw(size_t w, size_t h, void* buzzer_audio) {
                 RSGL_drawCircle(RSGL_CIRCLE(comp.x + (45 / 4), comp.y + (45 / 4), 45 / 2), RSGL_RGB(0, 0, 0));
                 RSGL_audio_play(*(RSGL_audio*)buzzer_audio);
 
+                break;
+            case CLOCK:
+                RSGL_drawCircle(RSGL_CIRCLE(comp.x, comp.y, 45), RSGL_RGB(comp.active ? 220 : 200, comp.active ? 85 : 65, 0));
+                RSGL_drawCircle(RSGL_CIRCLE(comp.x + 3, comp.y + 3, 39), RSGL_RGB(comp.active ? 255 : 235, comp.active ? 120 : 100, 0));
                 break;      
-            default: 
+            default:
                 break;
         }
 
         for (i = 0; i < comp.children_len; i++) {
             component* child = comp.children[i];
 
-            if (child->type == CONST_ZERO) child->active = false;
+            if (comp.type == CLOCK && comp.active) {
+                component* comp = &comp_components[index];
+
+                if (comp->startTime == 0)
+                    comp->startTime = RGFW_getTime();
+                
+                u8 curTime = (RGFW_getTime() - comp->startTime);
+
+                size_t j;
+                u8 cmp = 0x00000001;
+
+                for (j = 0; j < comp->children_len && j < 8; j++) {
+                    comp->children[j]->active = curTime & cmp;
+                    cmp <<= 1;
+                }
+
+                if (curTime >= 255 || curTime >= pow(2, comp->children_len))
+                    comp->startTime = RGFW_getTime();
+            }
+            else if (child->type == CONST_ZERO) child->active = false;
             else if (child->type == CONST_ONE) child->active = true;
             else if (child->type == NOT)
                 child->active = !comp.active; 
@@ -476,6 +511,10 @@ COMPDEF void comp_draw(size_t w, size_t h, void* buzzer_audio) {
     RSGL_drawCircle(RSGL_CIRCLE(740, (h - 40), 45), RSGL_RGB(0, 0, 0));
     RSGL_drawCircle(RSGL_CIRCLE(740 + 3, (h - 40) + 3, 39), RSGL_RGB(76, 39, 45));
     RSGL_drawText("Buzzer", RSGL_CIRCLE(720, h - 40, 25), RSGL_RGB(120, 120, 120));
+
+    RSGL_drawCircle(RSGL_CIRCLE(850, (h - 40), 45), RSGL_RGB(200, 65, 0));
+    RSGL_drawCircle(RSGL_CIRCLE(850 + 3, (h - 40) + 3, 39), RSGL_RGB(235, 100, 0));
+    RSGL_drawText("Clock", RSGL_CIRCLE(835, h - 40, 25), RSGL_RGB(120, 120, 120));
 }
 #endif
 #endif

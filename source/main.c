@@ -20,6 +20,8 @@ int main() {
 
     RSGL_setFont(RSGL_loadFont("SansPosterBold.ttf"));
 
+    RSGL_legacyOpenGL(true);    
+
     while (running) {
         while (RGFW_window_checkEvent(window)) {
             if (window->event.type == RGFW_quit) {

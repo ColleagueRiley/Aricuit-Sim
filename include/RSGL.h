@@ -328,6 +328,8 @@ RSGL_draw
 *******
 */
 
+/* toggle legacy OpenGL (if your system supports modern opengl, it's on by default) */
+RSGLDEF void RSGL_legacyOpenGL(bool legacy);
 
 /* RSGL_draw args */
 RSGLDEF void RSGL_rotate(RSGL_point3D rotate);
@@ -934,6 +936,10 @@ void RSGL_graphics_free() {
 RSGL_draw
 ****
 */
+
+void RSGL_legacyOpenGL(bool legacy) {
+    rglLegacy(legacy);
+}
 
 /* RSGL_args */
 
