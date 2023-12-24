@@ -46,6 +46,7 @@ typedef enum componentType {
     BUTTON,
     CONST_ONE,
     CONST_ZERO,
+    BUZZER,
 } componentType;
 
 typedef struct component component;
@@ -79,7 +80,7 @@ COMPDEF void component_deleteParent(component* comp, component* parent);
 COMPDEF void comp_pressed(size_t x, size_t y, uint8_t moving);
 COMPDEF void comp_click(size_t x, size_t y);
 
-COMPDEF void comp_draw(size_t w, size_t h);
+COMPDEF void comp_draw(size_t w, size_t h, void* buzzer_audio);
 #endif
 
 #ifdef COMPONENT_IMPLEMENTATION
@@ -226,51 +227,58 @@ COMPDEF void comp_pressed(size_t x, size_t y, uint8_t moving) {
         return;
     }
 
-    if (comp_collide(65, (compH - 40), 45, 45, x, y)) {
+    if (comp_collide(20, (compH - 40), 45, 45, x, y)) {
         compPressed = add_component(COMPONENT(x, y, INPUT));
         compMoving = true;
         return;
     }
 
-    if (comp_collide(195, (compH - 40), 45, 45, x, y)) {
+    if (comp_collide(110, (compH - 40), 45, 45, x, y)) {
         compPressed = add_component(COMPONENT(x, y, LED));
         compMoving = true;
         return;
     }
 
-    if (comp_collide(285, (compH - 40), 45, 45, x, y)) {
+    if (comp_collide(200, (compH - 40), 45, 45, x, y)) {
         compPressed = add_component(COMPONENT(x, y, NOT));
         compMoving = true;
         return;
     }
 
-    if (comp_collide(385, (compH - 40), 45, 45, x, y)) {
+    if (comp_collide(290, (compH - 40), 45, 45, x, y)) {
         compPressed = add_component(COMPONENT(x, y, AND));
         compMoving = true;
         return;
     }
 
-    if (comp_collide(485, (compH - 40), 45, 45, x, y)) {
+    if (comp_collide(380, (compH - 40), 45, 45, x, y)) {
         compPressed = add_component(COMPONENT(x, y, OR));
         compMoving = true;
         return;
     }
 
-    if (comp_collide(625, (compH - 40), 45, 45, x, y))  {
+    if (comp_collide(470, (compH - 40), 45, 45, x, y))  {
         compPressed = add_component(COMPONENT(x, y, BUTTON));
         compMoving = true;
         return;
     }
 
-    if (comp_collide(830, (compH - 40), 45, 45, x, y)) {
+    if (comp_collide(570, (compH - 40), 45, 45, x, y)) {
+        compPressed = add_component(COMPONENT(x, y, CONST_ONE));
+        compPressed->active = true;
+        compMoving = true;
+        return;
+    }
+    
+    if (comp_collide(650, (compH - 40), 45, 45, x, y)) {
         compPressed = add_component(COMPONENT(x, y, CONST_ZERO));
         compMoving = true;
         return;
     }
 
-    if (comp_collide(755, (compH - 40), 45, 45, x, y)) {
-        compPressed = add_component(COMPONENT(x, y, CONST_ONE));
-        compPressed->active = true;
+
+    if (comp_collide(740, (compH - 40), 45, 45, x, y)) {
+        compPressed = add_component(COMPONENT(x, y, BUZZER));
         compMoving = true;
         return;
     }
@@ -326,7 +334,7 @@ COMPDEF void comp_click(size_t x, size_t y) {
 }
 
 #ifdef RSGL_H
-COMPDEF void comp_draw(size_t w, size_t h) {
+COMPDEF void comp_draw(size_t w, size_t h, void* buzzer_audio) {
     compH = h;
 
     size_t index, i;
@@ -367,7 +375,18 @@ COMPDEF void comp_draw(size_t w, size_t h) {
             case CONST_ZERO:
                 RSGL_drawCircle(RSGL_CIRCLE(comp.x, comp.y, 45), RSGL_RGB(0, 0, 0));
                 RSGL_drawCircle(RSGL_CIRCLE(comp.x + 3, comp.y + 3, 39), RSGL_RGB(35, 35, 35));
-                break;           
+                break;     
+            case BUZZER:
+                RSGL_drawCircle(RSGL_CIRCLE(comp.x, comp.y, 45), RSGL_RGB(0, 0, 0));
+                RSGL_drawCircle(RSGL_CIRCLE(comp.x + 3, comp.y + 3, 39), RSGL_RGB(76, 39, 45));
+
+                if (comp.active == 0)
+                    break;
+                
+                RSGL_drawCircle(RSGL_CIRCLE(comp.x + (45 / 4), comp.y + (45 / 4), 45 / 2), RSGL_RGB(0, 0, 0));
+                RSGL_audio_play(*(RSGL_audio*)buzzer_audio);
+
+                break;      
             default: 
                 break;
         }
@@ -422,37 +441,41 @@ COMPDEF void comp_draw(size_t w, size_t h) {
         return;
 
     /* draw shop */
-    RSGL_drawCircle(RSGL_CIRCLE(65, (h - 40), 45), RSGL_RGB(0, 0, 100));
-    RSGL_drawCircle(RSGL_CIRCLE(65 + 3, (h - 40) + 3, 39), RSGL_RGB(0, 0, 120));
-    RSGL_drawText("I N P U T", RSGL_CIRCLE(45, h - 40, 25), RSGL_RGB(120, 120, 120));
+    RSGL_drawCircle(RSGL_CIRCLE(20, (h - 40), 45), RSGL_RGB(0, 0, 100));
+    RSGL_drawCircle(RSGL_CIRCLE(20 + 3, (h - 40) + 3, 39), RSGL_RGB(0, 0, 120));
+    RSGL_drawText("INPUT", RSGL_CIRCLE(5, h - 40, 25), RSGL_RGB(120, 120, 120));
 
-    RSGL_drawCircle(RSGL_CIRCLE(195, (h - 40), 45), RSGL_RGB(0, 100, 0));
-    RSGL_drawCircle(RSGL_CIRCLE(195 + 3, (h - 40) + 3, 39), RSGL_RGB(0, 120, 0));
-    RSGL_drawText("L E D", RSGL_CIRCLE(190, h - 40, 25), RSGL_RGB(120, 120, 120));
+    RSGL_drawCircle(RSGL_CIRCLE(110, (h - 40), 45), RSGL_RGB(0, 100, 0));
+    RSGL_drawCircle(RSGL_CIRCLE(110 + 3, (h - 40) + 3, 39), RSGL_RGB(0, 120, 0));
+    RSGL_drawText("LED", RSGL_CIRCLE(110, h - 40, 25), RSGL_RGB(120, 120, 120));
 
-    RSGL_drawCircle(RSGL_CIRCLE(285, (h - 40), 45), RSGL_RGB(100, 0, 0));
-    RSGL_drawCircle(RSGL_CIRCLE(285 + 3, (h - 40) + 3, 39), RSGL_RGB(120, 0, 0));
-    RSGL_drawText("N O T", RSGL_CIRCLE(280, h - 40, 25), RSGL_RGB(120, 120, 120));
+    RSGL_drawCircle(RSGL_CIRCLE(200, (h - 40), 45), RSGL_RGB(100, 0, 0));
+    RSGL_drawCircle(RSGL_CIRCLE(200 + 3, (h - 40) + 3, 39), RSGL_RGB(120, 0, 0));
+    RSGL_drawText("NOT", RSGL_CIRCLE(190, h - 40, 25), RSGL_RGB(120, 120, 120));
 
-    RSGL_drawCircle(RSGL_CIRCLE(385, (h - 40), 45), RSGL_RGB(100, 0, 100));
-    RSGL_drawCircle(RSGL_CIRCLE(385 + 3, (h - 40) + 3, 39), RSGL_RGB(120, 0, 120));
-    RSGL_drawText("A N D", RSGL_CIRCLE(380, h - 40, 25), RSGL_RGB(120, 120, 120));
+    RSGL_drawCircle(RSGL_CIRCLE(290, (h - 40), 45), RSGL_RGB(100, 0, 100));
+    RSGL_drawCircle(RSGL_CIRCLE(290 + 3, (h - 40) + 3, 39), RSGL_RGB(120, 0, 120));
+    RSGL_drawText("AND", RSGL_CIRCLE(290, h - 40, 25), RSGL_RGB(120, 120, 120));
 
-    RSGL_drawCircle(RSGL_CIRCLE(480, (h - 40), 45), RSGL_RGB(100, 100, 0));
-    RSGL_drawCircle(RSGL_CIRCLE(480 + 3, (h - 40) + 3, 39), RSGL_RGB(145, 145, 0));
-    RSGL_drawText("O R", RSGL_CIRCLE(480, h - 40, 25), RSGL_RGB(120, 120, 120));
+    RSGL_drawCircle(RSGL_CIRCLE(380, (h - 40), 45), RSGL_RGB(100, 100, 0));
+    RSGL_drawCircle(RSGL_CIRCLE(380 + 3, (h - 40) + 3, 39), RSGL_RGB(145, 145, 0));
+    RSGL_drawText("OR", RSGL_CIRCLE(380, h - 40, 25), RSGL_RGB(120, 120, 120));
 
-    RSGL_drawCircle(RSGL_CIRCLE(625, (h - 40), 45), RSGL_RGB(100, 100, 100));
-    RSGL_drawCircle(RSGL_CIRCLE(625 + 3, (h - 40) + 3, 39), RSGL_RGB(145, 145, 145));
-    RSGL_drawText("B U T T O N", RSGL_CIRCLE(580, h - 40, 25), RSGL_RGB(120, 120, 120));
+    RSGL_drawCircle(RSGL_CIRCLE(470, (h - 40), 45), RSGL_RGB(100, 100, 100));
+    RSGL_drawCircle(RSGL_CIRCLE(470 + 3, (h - 40) + 3, 39), RSGL_RGB(145, 145, 145));
+    RSGL_drawText("BUTTON", RSGL_CIRCLE(440, h - 40, 25), RSGL_RGB(120, 120, 120));
 
-    RSGL_drawCircle(RSGL_CIRCLE(755, (h - 40), 45), RSGL_RGB(235, 235, 235));
-    RSGL_drawCircle(RSGL_CIRCLE(755 + 3, (h - 40) + 3, 39), RSGL_RGB(255, 255, 255));
-    RSGL_drawText("1", RSGL_CIRCLE(770, h - 40, 25), RSGL_RGB(120, 120, 120));
+    RSGL_drawCircle(RSGL_CIRCLE(560, (h - 40), 45), RSGL_RGB(235, 235, 235));
+    RSGL_drawCircle(RSGL_CIRCLE(560 + 3, (h - 40) + 3, 39), RSGL_RGB(255, 255, 255));
+    RSGL_drawText("1", RSGL_CIRCLE(570, h - 40, 25), RSGL_RGB(120, 120, 120));
 
-    RSGL_drawCircle(RSGL_CIRCLE(830, (h - 40), 45), RSGL_RGB(0, 0, 0));
-    RSGL_drawCircle(RSGL_CIRCLE(830 + 3, (h - 40) + 3, 39), RSGL_RGB(35, 35, 35));
-    RSGL_drawText("0", RSGL_CIRCLE(840, h - 40, 25), RSGL_RGB(120, 120, 120));
+    RSGL_drawCircle(RSGL_CIRCLE(650, (h - 40), 45), RSGL_RGB(0, 0, 0));
+    RSGL_drawCircle(RSGL_CIRCLE(650 + 3, (h - 40) + 3, 39), RSGL_RGB(35, 35, 35));
+    RSGL_drawText("0", RSGL_CIRCLE(660, h - 40, 25), RSGL_RGB(120, 120, 120));
+
+    RSGL_drawCircle(RSGL_CIRCLE(740, (h - 40), 45), RSGL_RGB(0, 0, 0));
+    RSGL_drawCircle(RSGL_CIRCLE(740 + 3, (h - 40) + 3, 39), RSGL_RGB(76, 39, 45));
+    RSGL_drawText("Buzzer", RSGL_CIRCLE(720, h - 40, 25), RSGL_RGB(120, 120, 120));
 }
 #endif
 #endif

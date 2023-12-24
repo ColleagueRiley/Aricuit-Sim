@@ -517,6 +517,7 @@ typedef struct RSGL_audio {
     struct RSGL_audioData* data;
 } RSGL_audio;
 
+void RSGL_audio_loadFile(RSGL_audio* a, const char* file);
 void RSGL_audio_playFile(RSGL_audio* a, const char* file);
 RSGLDEF void RSGL_audio_play(RSGL_audio a);
 RSGLDEF void RSGL_audio_pause(RSGL_audio a);
@@ -1418,14 +1419,14 @@ void RSGL_setRFont(RFont_font* font) {
 }
 
 size_t RSGL_drawFPS(RGFW_window* win, RSGL_circle c, RSGL_color color) {
-    RSGL_drawText(RSGL_strFmt("FPS : %i", win->event.fps), c, color);
+    return RSGL_drawText(RSGL_strFmt("FPS : %i", win->event.fps), c, color);
 }
 
 size_t RSGL_drawText_len(const char* text, size_t len, RSGL_circle c, RSGL_color color) {
     glEnable(GL_BLEND);
 
     if (text == NULL || text[0] == '\0')
-        return;
+        return 0;
 
     RFont_set_color(color.r / 255.0f, color.b / 255.0f, color.g / 255.0f, color.a / 255.0f);
     return RFont_draw_text_len(RSGL_font.f, text, len, c.x, c.y, c.d, 0.0f);
@@ -1670,7 +1671,7 @@ typedef struct RSGL_audioData {
 
 void RSGL_data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount);
 
-void RSGL_audio_playFile(RSGL_audio* a, const char* file) {
+void RSGL_audio_loadFile(RSGL_audio* a, const char* file) {
     if (file[1] == '\0')
         return;
 
@@ -1694,18 +1695,20 @@ void RSGL_audio_playFile(RSGL_audio* a, const char* file) {
         printf("Failed to open playback device.\n");
         ma_decoder_uninit(&a->data->decoder);
     }
+}
 
-    if (ma_device_start(&a->data->device) != MA_SUCCESS) {
-        printf("Failed to start playback device.\n");
-        ma_device_uninit(&a->data->device);
-        ma_decoder_uninit(&a->data->decoder);
-    }
-    
+void RSGL_audio_playFile(RSGL_audio* a, const char* file) {
+    RSGL_audio_loadFile(a, file);
     RSGL_audio_play(*a);
 }
 
 void RSGL_audio_play(RSGL_audio a) {
-    ma_device_start(&a.data->device);
+    if (ma_device_start(&a.data->device) != MA_SUCCESS) {
+        printf("Failed to start playback device.\n");
+        ma_device_uninit(&a.data->device);
+        ma_decoder_uninit(&a.data->decoder);
+    }
+
     if (RSGL_audio_position(a) == RSGL_audio_len(a))
         RSGL_audio_seek(a, 0);
 }

@@ -20,6 +20,7 @@ It also allows a user to easily change how components are rendered and what back
 - basic input
 - basic button
 - constants (0 and 1)
+- buzzer
 
 # Features todo
 - save as file
@@ -32,4 +33,3 @@ It also allows a user to easily change how components are rendered and what back
 - ROM
 - RAM
 - LCD
-- buzzer
