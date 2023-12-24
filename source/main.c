@@ -35,5 +35,6 @@ int main() {
         RSGL_window_clear(window, RSGL_RGB(60, 60, 60));
     }
 
+    comp_free();
     RSGL_window_close(window);
 }
