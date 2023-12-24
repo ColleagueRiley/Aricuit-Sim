@@ -42,7 +42,8 @@ typedef enum componentType {
     LED,
     NOT,
     AND,
-    OR
+    OR,
+    BUTTON
 } componentType;
 
 typedef struct component component;
@@ -213,7 +214,11 @@ COMPDEF void comp_pressed(size_t x, size_t y, uint8_t moving) {
             continue;
         
         compPressed = comp;
-        break;
+
+        if (compPressed->type == BUTTON && moving == false)
+            comp->active = true;    
+    
+        return;
     }
 
     if (comp_collide(65, (compH - 40), 45, 45, x, y)) {
@@ -245,6 +250,12 @@ COMPDEF void comp_pressed(size_t x, size_t y, uint8_t moving) {
         compMoving = true;
         return;
     }
+
+    if (comp_collide(625, (compH - 40), 45, 45, x, y))  {
+        compPressed = add_component(COMPONENT(x, y, BUTTON));
+        compMoving = true;
+        return;
+    }
 }
 
 COMPDEF void comp_move(size_t x, size_t y) {
@@ -252,6 +263,9 @@ COMPDEF void comp_move(size_t x, size_t y) {
         return;
 
     if (compMoving == 0) {
+        if (compPressed->type == BUTTON && comp_collide(compPressed->x, compPressed->y, 45, 45, x, y) == 0)
+            compPressed->active = false;  
+
         compX = x;
         compY = y;
 
@@ -324,6 +338,9 @@ COMPDEF void comp_draw(size_t w, size_t h) {
                 RSGL_drawCircle(RSGL_CIRCLE(comp.x, comp.y, 45), RSGL_RGB(comp.active ? 120 : 100, comp.active ? 120 : 100, 0));
                 RSGL_drawCircle(RSGL_CIRCLE(comp.x + 3, comp.y + 3, 39), RSGL_RGB(comp.active ? 200 : 145, comp.active ? 200 : 145, 0));
                 break;
+            case BUTTON:
+                RSGL_drawCircle(RSGL_CIRCLE(comp.x, comp.y, 45), RSGL_RGB(comp.active ? 120 : 100, comp.active ? 120 : 100, comp.active ? 120 : 100));
+                RSGL_drawCircle(RSGL_CIRCLE(comp.x + 3, comp.y + 3, 39), RSGL_RGB(comp.active ? 200 : 145, comp.active ? 200 : 145, comp.active ? 200 : 145));
             default: 
                 break;
         }
@@ -395,6 +412,10 @@ COMPDEF void comp_draw(size_t w, size_t h) {
     RSGL_drawCircle(RSGL_CIRCLE(480, (h - 40), 45), RSGL_RGB(100, 100, 0));
     RSGL_drawCircle(RSGL_CIRCLE(480 + 3, (h - 40) + 3, 39), RSGL_RGB(145, 145, 0));
     RSGL_drawText("O R", RSGL_CIRCLE(480, h - 40, 25), RSGL_RGB(120, 120, 120));
+
+    RSGL_drawCircle(RSGL_CIRCLE(625, (h - 40), 45), RSGL_RGB(100, 100, 100));
+    RSGL_drawCircle(RSGL_CIRCLE(625 + 3, (h - 40) + 3, 39), RSGL_RGB(145, 145, 145));
+    RSGL_drawText("B U T T O N", RSGL_CIRCLE(580, h - 40, 25), RSGL_RGB(120, 120, 120));
 }
 #endif
 #endif
