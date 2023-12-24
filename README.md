@@ -1,4 +1,4 @@
-# Aircuit
+# Aricuit Sim
 A basic digital logic simulator (inspired by Digital Logic Sim) named after Aristotle, the father of logic.
 
 # component.h

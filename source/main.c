@@ -16,7 +16,7 @@ int main() {
 
     RSGL_audio_loadFile(&buzzer_audio, "beep.mp3");
 
-    RSGL_window* window = RSGL_createWindow("Aircuit", RSGL_RECT(0, 0, 1000, 600), RSGL_CENTER);
+    RSGL_window* window = RSGL_createWindow("Aricuit Sim", RSGL_RECT(0, 0, 1000, 600), RSGL_CENTER);
 
     RSGL_setFont(RSGL_loadFont("SansPosterBold.ttf"));
 
