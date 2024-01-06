@@ -30,7 +30,7 @@ It also allows a user to easily change how components are rendered and what back
 - projects as modules
 - module input
 - scroll
-- clock
+- register
 - ROM
 - RAM
 - LCD

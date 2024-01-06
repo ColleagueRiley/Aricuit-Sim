@@ -5,6 +5,16 @@
 - module input
 - scroll
 
+- 8-bits
 - ROM
 - RAM
 - LCD
+- register
+
+BUGS:
+- when nodes are deleted, sometimes other nodes reconnect
+- OpenGL 3 rendering issues when there are two many objects on the screen
+
+UI FIXES:
+- how many connections a component can input / output 
+- list connections (lables of some sort, not all connected to one port)

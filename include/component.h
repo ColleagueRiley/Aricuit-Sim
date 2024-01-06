@@ -25,7 +25,7 @@
 #endif
 
 #ifndef COMPONENT_CHILDREN_BASE
-#define COMPONENT_CHILDREN_BASE 4
+#define COMPONENT_CHILDREN_BASE 16
 #endif
 
 #ifndef COMPONENT_BASE
@@ -37,9 +37,12 @@
 
 #include <stdint.h>
 #include <math.h>
+#include <stddef.h>
+#include <stdbool.h>
+#include <time.h>
 
 typedef enum componentType {
-    INPUT,
+    INPUT = 0,
     LED,
     NOT,
     AND,
@@ -49,6 +52,8 @@ typedef enum componentType {
     CONST_ZERO,
     BUZZER,
     CLOCK,
+    ROM,
+    BITS,
 } componentType;
 
 typedef struct component component;
@@ -61,7 +66,7 @@ struct component {
 
     size_t parents_len;
     size_t parents_cap;
-    component* parents[9];
+    component** parents;
 
     size_t children_len;
     size_t children_cap;
@@ -73,21 +78,25 @@ struct component {
 #define COMPONENT(x, y, type) (component){x, y, type}
 
 COMPDEF void comp_init(void);
+COMPDEF void comp_save(void);
 COMPDEF component* add_component(component c);
 COMPDEF void delete_component(component* comp);
 COMPDEF void comp_free(void);
 
-COMPDEF void component_addChild(component* comp, component* child);
+COMPDEF size_t component_addChild(component* comp, component* child);
 COMPDEF void component_deleteChild(component* comp, component* child);
 COMPDEF void component_deleteParent(component* comp, component* parent);
 
 COMPDEF void comp_pressed(size_t x, size_t y, uint8_t moving);
 COMPDEF void comp_click(size_t x, size_t y);
 
-COMPDEF void comp_draw(size_t w, size_t h, void* buzzer_audio);
+COMPDEF void comp_draw(size_t w, size_t h, void* buzzer_audio, unsigned char* rom);
 #endif
 
 #ifdef COMPONENT_IMPLEMENTATION
+
+#include "silistr.h"
+
 component* comp_components;
 size_t comp_components_len;
 size_t comp_components_cap;
@@ -102,14 +111,122 @@ COMPDEF void comp_init(void) {
     comp_components = (component*)malloc(sizeof(component) * comp_components_cap);
 }
 
+char* comp_defaultName = "untitled.save";
+
+COMPDEF void comp_saveNode(component comp, siString* str) {
+    static char dataStr[1024];
+    sprintf(dataStr, "%li,%li,%i", comp.x, comp.y, comp.type);
+
+    si_string_append(str, dataStr);
+
+    if (comp.children_len)
+        si_string_append_len(str, "{", 1);
+    si_string_append_len(str, "\n", 1);
+
+    size_t i;
+    for (i = 0; i < comp.children_len; i++) {
+        comp_saveNode(*comp.children[i], str);
+    }
+    
+    if (comp.children_len) {
+        si_string_append_len(str, "}\n", 2);
+    }
+}
+
+COMPDEF void comp_save(void) {
+    FILE* saveFile = fopen(comp_defaultName, "w+");
+
+    siString str = si_string_make_reserve(1025);
+
+    size_t i;
+    for (i = 0; i < comp_components_len; i++) {
+        component comp = comp_components[i];
+        if (comp.parents_len)
+            continue;
+        
+        comp_saveNode(comp, &str);
+
+        si_string_append_len(&str, "\n", 1);
+    }
+    
+    fwrite(str, si_string_len(str), 1, saveFile);
+
+    si_string_free(str);
+    fclose(saveFile);
+}
+
+COMPDEF component* comp_loadNode(const char* file, size_t index, size_t size) {
+    static char num[25];
+    
+    component comp;
+
+    size_t i = index, j;
+    for (j = 0; j < 3; j++) {
+        for (; i < size && (file[i] >= '0' && file[i] <= '9'); i++)
+            num[i - index] = file[i]; 
+        
+        if (file[i] == ',') {
+            if (j == 0) 
+                comp.x = si_cstr_to_u64(num); 
+            else 
+                comp.y = si_cstr_to_u64(num); 
+            
+//            printf("%li %li\n", comp.x, comp.y);
+            continue;
+        }
+
+        if (file[i] == '\n' || file[i] == '{')
+            comp.type = si_cstr_to_u64(num);
+
+        if (file[i] == '\n')
+            break;
+        
+        if (file[i] == '{') {
+            i += 2;
+            
+            //component_addChild(&comp, comp_loadNode(file, i, size));
+            break;
+        }
+
+        break;
+    }
+
+    return add_component(comp);
+}
+
+COMPDEF void comp_loadSave(const char* file) {
+    FILE* saveFile = fopen(file, "r");
+
+    fseek(saveFile, 0U, SEEK_END);
+    size_t size = ftell(saveFile);
+    fseek(saveFile, 0U, SEEK_SET);
+
+    char* fileData = malloc(sizeof(char) * size);
+    fread(fileData, size, 1, saveFile);
+
+    size_t i;
+    for (i = 0; i < size; i++)
+        if (fileData[i] >= '0' && fileData[i] <= '9')
+            comp_loadNode(fileData, i, size);
+
+    fclose(saveFile);
+    free(fileData);
+}
+
 COMPDEF component* add_component(component c) {
     c.active = false;
     c.children_len = 0;
     c.children_cap = COMPONENT_CHILDREN_BASE;
     c.children = (component**)malloc(sizeof(component*) * c.children_cap);
+    c.parents = (component**)malloc(sizeof(component*) * c.children_cap);
 
     c.parents_cap = 9;
     c.parents_len = 0;
+
+    if (comp_components_len >= comp_components_cap) {
+        comp_components_cap += (COMPONENT_BASE / 4);
+        comp_components = (component*)realloc(comp_components, sizeof(component) * comp_components_cap);
+    }
 
     comp_components[comp_components_len] = c;
     comp_components_len++;
@@ -130,12 +247,13 @@ COMPDEF void delete_component(component* comp) {
             continue;
 
         for (j = 0; j < comp->parents_len; j++)
-            component_deleteChild(comp->parents[j], comp);
+            component_deleteParent(comp, comp->parents[j]);
 
         for (j = 0; j < comp->children_len; j++)
             component_deleteChild(comp, comp->children[j]);
 
         free(comp_components[i].children);
+        free(comp_components[i].parents);
 
         for (j = i + 1; j < comp_components_len; j++)
             comp_components[i + (j - i - 1)] = comp_components[j];
@@ -149,24 +267,35 @@ COMPDEF void delete_component(component* comp) {
 COMPDEF void comp_free(void) {
     size_t i;
     for (i = 0; i < comp_components_len; i++)
-        free(comp_components[i].children);
+        delete_component(&comp_components[i]);
 
     free(comp_components);
 }
 
-COMPDEF void component_addChild(component* comp, component* child) {
+COMPDEF size_t component_addChild(component* comp, component* child) {
     size_t i;
     for (i = 0; i < comp->children_len; i++)
         if (child == comp->children[i]) {
             component_deleteChild(comp, child);
-            return;
         }
+
+    if (comp->children_len >= comp->children_cap) {
+        comp->children_cap += (COMPONENT_CHILDREN_BASE / 4);
+        comp->children = (component**)realloc(comp->children, sizeof(component*) * comp->children_cap);
+    }
+
+    if (child->parents_len >= child->parents_cap) {
+        child->parents_cap += (COMPONENT_BASE / 4);
+        child->parents = (component**)realloc(child->parents, sizeof(component*) * child->parents_cap);
+    }
 
     child->parents[child->parents_len] = comp;
     child->parents_len++;
 
     comp->children[comp->children_len] = child;
     comp->children_len++;
+
+    return i;
 }
 
 COMPDEF void component_deleteChild(component* comp, component* child) {
@@ -294,6 +423,18 @@ COMPDEF void comp_pressed(size_t x, size_t y, uint8_t moving) {
         compMoving = true;
         return;
     }
+
+    /*if (comp_collide(940, (compH - 40), 45, 45, x, y)) {
+        compPressed = add_component(COMPONENT(x, y, ROM));
+        compMoving = true;
+        return;
+    }
+
+    if (comp_collide(1030, (compH - 40), 45, 45, x, y)) {
+        compPressed = add_component(COMPONENT(x, y, BITS));
+        compMoving = true;
+        return;
+    }*/
 }
 
 COMPDEF void comp_move(size_t x, size_t y) {
@@ -346,7 +487,7 @@ COMPDEF void comp_click(size_t x, size_t y) {
 }
 
 #ifdef RSGL_H
-COMPDEF void comp_draw(size_t w, size_t h, void* buzzer_audio) {
+COMPDEF void comp_draw(size_t w, size_t h, void* buzzer_audio, u8* rom) {
     compH = h;
 
     size_t index, i;
@@ -362,7 +503,7 @@ COMPDEF void comp_draw(size_t w, size_t h, void* buzzer_audio) {
                 RSGL_drawCircle(RSGL_CIRCLE(comp.x, comp.y, 45), RSGL_RGB(0, 100, 0));
                 RSGL_drawCircle(RSGL_CIRCLE(comp.x + 3, comp.y + 3, 39), RSGL_RGB(0, 120, 0));
                 if (comp.active)
-                    RSGL_drawCircle(RSGL_CIRCLE(comp.x + (45 / 4), comp.y + (45 / 4), 45 / 2), RSGL_RGBA(0, 255, 0, 150));
+                    RSGL_drawCircle(RSGL_CIRCLE(comp.x + (45 / 4), comp.y + (45 / 4), 45 / 2), RSGL_RGBA(0, 255, 0, 255));
                 break;
             case NOT:
                 RSGL_drawCircle(RSGL_CIRCLE(comp.x, comp.y, 45), RSGL_RGB(comp.active ? 120 : 100, 0, 0));
@@ -402,7 +543,14 @@ COMPDEF void comp_draw(size_t w, size_t h, void* buzzer_audio) {
             case CLOCK:
                 RSGL_drawCircle(RSGL_CIRCLE(comp.x, comp.y, 45), RSGL_RGB(comp.active ? 220 : 200, comp.active ? 85 : 65, 0));
                 RSGL_drawCircle(RSGL_CIRCLE(comp.x + 3, comp.y + 3, 39), RSGL_RGB(comp.active ? 255 : 235, comp.active ? 120 : 100, 0));
-                break;      
+                break;
+            case ROM:
+                RSGL_drawCircle(RSGL_CIRCLE(comp.x, comp.y, 45), RSGL_RGB(comp.active ? 144 : 124, comp.active ? 233 : 213, comp.active ? 202 : 182));
+                RSGL_drawCircle(RSGL_CIRCLE(comp.x + 3, comp.y + 3, 39), RSGL_RGB(comp.active ? 174: 154, comp.active ? 263 : 243, comp.active ?  232 : 212));
+                break;
+            case BITS:
+                RSGL_drawCircle(RSGL_CIRCLE(comp.x, comp.y, 45), RSGL_RGB(122, 85, 66));
+                RSGL_drawCircle(RSGL_CIRCLE(comp.x + 3, comp.y + 3, 39), RSGL_RGB(142, 105, 86));
             default:
                 break;
         }
@@ -410,7 +558,39 @@ COMPDEF void comp_draw(size_t w, size_t h, void* buzzer_audio) {
         for (i = 0; i < comp.children_len; i++) {
             component* child = comp.children[i];
 
-            if (comp.type == CLOCK && comp.active) {
+            if (comp.type == BITS && comp.active) {
+                component* comp = &comp_components[index];
+
+
+                size_t index = component_addChild(comp, child);
+            }
+            else if (comp.type == ROM && comp.active) {
+                component* comp = &comp_components[index];
+
+                if (comp->parents_len < 2 || comp->parents[comp->parents_len - 1] == 0) {
+                    comp->active = false; 
+                    RSGL_drawLine(RSGL_POINT((comp->x + 45), comp->y + (45 / 2)), RSGL_POINT(child->x, child->y + (45 / 2)), 3, RSGL_RGB(comp->active ? 255 : 0, 0, 0));
+                    continue;
+                }
+
+                size_t j;
+                u8 rom_index = 0;
+                u8 cmp = 0x00000001;
+
+                for (j = 0; j < (comp->parents_len - 1) && j < 8; j++) {
+                    if (comp->parents[j])
+                        rom_index |= cmp;
+                    
+                    cmp <<= 1;
+                }
+
+                cmp = 0x00000001;
+                for (j = 0; j < comp->children_len && j < 8; j++) {
+                    comp->children[j]->active = rom[(8 * rom_index) + j];
+                    cmp <<= 1;
+                }
+            }
+            else if (comp.type == CLOCK && comp.active) {
                 component* comp = &comp_components[index];
 
                 if (comp->startTime == 0)
@@ -515,6 +695,14 @@ COMPDEF void comp_draw(size_t w, size_t h, void* buzzer_audio) {
     RSGL_drawCircle(RSGL_CIRCLE(850, (h - 40), 45), RSGL_RGB(200, 65, 0));
     RSGL_drawCircle(RSGL_CIRCLE(850 + 3, (h - 40) + 3, 39), RSGL_RGB(235, 100, 0));
     RSGL_drawText("Clock", RSGL_CIRCLE(835, h - 40, 25), RSGL_RGB(120, 120, 120));
+
+    /*RSGL_drawCircle(RSGL_CIRCLE(940, (h - 40), 45), RSGL_RGB(124, 213, 182));
+    RSGL_drawCircle(RSGL_CIRCLE(940 + 3, (h - 40) + 3, 39), RSGL_RGB(154, 243, 212));
+    RSGL_drawText("ROM", RSGL_CIRCLE(935, h - 40, 25), RSGL_RGB(120, 120, 120));
+
+    RSGL_drawCircle(RSGL_CIRCLE(1030, (h - 40), 45), RSGL_RGB(122, 85, 66));
+    RSGL_drawCircle(RSGL_CIRCLE(1030 + 3, (h - 40) + 3, 39), RSGL_RGB(142, 105, 86));
+    RSGL_drawText("BITS", RSGL_CIRCLE(1025, h - 40, 25), RSGL_RGB(120, 120, 120));*/
 }
 #endif
 #endif
